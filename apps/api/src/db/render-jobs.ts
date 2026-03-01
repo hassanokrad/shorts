@@ -1,6 +1,8 @@
 import { Prisma, RenderJobStatus } from '@prisma/client';
 import { applyCreditTransaction } from './credits';
 import { db } from './client';
+import { logger } from '../config/logger';
+import { InsufficientCreditsError } from './credits';
 import { withDbTransaction } from './transaction';
 
 export type EnqueueRenderJobInput = {
@@ -39,21 +41,48 @@ export async function enqueueRenderJobWithCreditDeduction(
       throw new Error('Project not found for user');
     }
 
-    await applyCreditTransaction(
-      {
+    await transaction.$executeRaw`
+      INSERT INTO credit_accounts (user_id, balance, updated_at)
+      VALUES (${input.userId}::uuid, 0, now())
+      ON CONFLICT (user_id) DO NOTHING
+    `;
+
+    const [account] = await transaction.$queryRaw<Array<{ balance: number }>>`
+      SELECT balance
+      FROM credit_accounts
+      WHERE user_id = ${input.userId}::uuid
+      FOR UPDATE
+    `;
+
+    if (!account || account.balance < Math.abs(input.requestedCredits)) {
+      throw new InsufficientCreditsError();
+    }
+
+    const nextBalance = account.balance - Math.abs(input.requestedCredits);
+
+    await transaction.creditAccount.update({
+      where: { userId: input.userId },
+      data: {
+        balance: nextBalance,
+        updatedAt: new Date(),
+      },
+    });
+
+    const ledgerTransaction = await transaction.creditTransaction.create({
+      data: {
         userId: input.userId,
         type: 'deduct_render',
         amount: -Math.abs(input.requestedCredits),
+        balanceAfter: nextBalance,
         metadata: {
           projectId: input.projectId,
           templateId: input.templateId,
           operation: 'enqueue_render',
         },
       },
-      transaction,
-    );
+    });
 
-    return transaction.renderJob.create({
+    const job = await transaction.renderJob.create({
       data: {
         userId: input.userId,
         projectId: input.projectId,
@@ -64,6 +93,17 @@ export async function enqueueRenderJobWithCreditDeduction(
         isWatermarked: input.isWatermarked ?? true,
       },
     });
+
+    logger.info('Render enqueue ledger mutation committed', {
+      userId: input.userId,
+      jobId: job.id,
+      creditTransactionId: ledgerTransaction.id,
+      transactionType: ledgerTransaction.type,
+      amount: ledgerTransaction.amount,
+      balanceAfter: ledgerTransaction.balanceAfter,
+    });
+
+    return job;
   }, executor);
 }
 
@@ -152,7 +192,7 @@ export async function refundRenderCredits(input: {
       return existingRefund;
     }
 
-    return applyCreditTransaction(
+    const refundTxn = await applyCreditTransaction(
       {
         userId: input.userId,
         type: 'refund_render',
@@ -165,5 +205,17 @@ export async function refundRenderCredits(input: {
       },
       transaction,
     );
+
+    logger.info('Render refund ledger mutation committed', {
+      userId: input.userId,
+      jobId: input.jobId,
+      creditTransactionId: refundTxn.id,
+      transactionType: refundTxn.type,
+      amount: refundTxn.amount,
+      balanceAfter: refundTxn.balanceAfter,
+      reason: input.reason,
+    });
+
+    return refundTxn;
   });
 }

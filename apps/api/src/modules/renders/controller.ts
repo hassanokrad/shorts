@@ -4,7 +4,7 @@ import type { CreateRenderRequestDto } from '@shorts/shared-types';
 
 import { InsufficientCreditsError } from '../../db';
 import type { AuthedRequest } from '../../types/express';
-import { rendersService } from './service';
+import { IdempotencyConflictError, RenderJobNotFoundError, rendersService } from './service';
 
 export const create: RequestHandler = async (req: AuthedRequest, res, next) => {
   try {
@@ -14,11 +14,21 @@ export const create: RequestHandler = async (req: AuthedRequest, res, next) => {
       return;
     }
 
-    const payload = await rendersService.create(userId, req.body as CreateRenderRequestDto);
+    const idempotencyKeyHeader = req.header('idempotency-key')?.trim();
+    const payload = await rendersService.create(
+      userId,
+      req.body as CreateRenderRequestDto,
+      idempotencyKeyHeader || undefined,
+    );
     res.status(202).json(payload);
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       res.status(400).json({ message: 'Insufficient credits' });
+      return;
+    }
+
+    if (error instanceof IdempotencyConflictError) {
+      res.status(409).json({ message: error.message });
       return;
     }
 
@@ -36,6 +46,11 @@ export const getById: RequestHandler = async (req: AuthedRequest, res, next) => 
 
     res.json(await rendersService.getById(userId, req.params.jobId));
   } catch (error) {
+    if (error instanceof RenderJobNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
     next(error);
   }
 };
@@ -50,6 +65,11 @@ export const list: RequestHandler = async (req: AuthedRequest, res, next) => {
 
     res.json(await rendersService.list(userId));
   } catch (error) {
+    if (error instanceof RenderJobNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
     next(error);
   }
 };
@@ -64,6 +84,11 @@ export const cancel: RequestHandler = async (req: AuthedRequest, res, next) => {
 
     res.json(await rendersService.cancel(userId, req.params.jobId));
   } catch (error) {
+    if (error instanceof RenderJobNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+
     next(error);
   }
 };
