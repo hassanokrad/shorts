@@ -4,5 +4,10 @@
   "private": true,
   "files": [
     "*.json"
-  ]
+  ],
+  "scripts": {
+    "build": "echo 'tsconfig: no build step'",
+    "lint": "echo 'tsconfig: no lint step'",
+    "typecheck": "echo 'tsconfig: no typecheck step'"
+  }
 }

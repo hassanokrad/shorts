@@ -8,5 +8,10 @@
     "./node": "./node.cjs",
     "./react": "./react.cjs",
     "./next": "./next.cjs"
+  },
+  "scripts": {
+    "build": "echo 'eslint-config: no build step'",
+    "lint": "echo 'eslint-config: no lint step'",
+    "typecheck": "echo 'eslint-config: no typecheck step'"
   }
 }

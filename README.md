@@ -1,26 +1,46 @@
 # AI Motivational Shorts Monorepo
 
-Baseline MVP monorepo scaffold for:
+This repository is a pnpm workspace for a three-service MVP that generates and serves AI motivational shorts.
 
-- `apps/web` — Next.js dashboard/frontend shell
-- `apps/api` — Express + TypeScript backend shell
-- `apps/renderer` — Remotion rendering shell
-- `packages/shared-types` — shared Zod schemas and DTOs
-- `packages/eslint-config` and `packages/tsconfig` — shared configs
+## MVP architecture
 
-## Quick start
+- `apps/api` (`@shorts/api`): Express + TypeScript backend for orchestration, persistence, and API endpoints.
+- `apps/renderer` (`@shorts/renderer`): Remotion-based video renderer.
+- `apps/web` (`@shorts/web`): Next.js frontend/dashboard.
+- `packages/shared-types` (`@shorts/shared-types`): shared schemas/types consumed by API and web.
+- `packages/eslint-config` (`@shorts/eslint-config`): shared ESLint presets.
+- `packages/tsconfig` (`@shorts/tsconfig`): shared TypeScript config presets.
+- `infrastructure/docker`: docker-related infra artifacts.
+- `infrastructure/sql`: SQL bootstrap/migration helpers.
 
-1. Enable corepack and install dependencies.
-2. Copy `.env.example` to `.env` as needed.
-3. Run:
+## Workspace setup
 
 ```bash
 pnpm install
-pnpm dev
+cp .env.example .env
 ```
 
-## Workspace scripts
+## Startup order (development)
 
-- `pnpm build`
-- `pnpm lint`
-- `pnpm typecheck`
+Start services in this order so downstream dependencies are available:
+
+1. **API** (`apps/api`) — base backend endpoints should be reachable first.
+2. **Renderer** (`apps/renderer`) — renderer worker/studio process can then connect to API.
+3. **Web** (`apps/web`) — frontend starts last so it can call live API endpoints.
+
+Manual startup:
+
+```bash
+pnpm --filter @shorts/api dev
+pnpm --filter @shorts/renderer dev
+pnpm --filter @shorts/web dev
+```
+
+Or run all workspace scripts:
+
+```bash
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+```
