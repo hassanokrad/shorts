@@ -138,13 +138,18 @@ export async function claimQueuedRenderJobs(limit: number): Promise<QueuedRender
   });
 }
 
-export async function markRenderJobSucceeded(input: { jobId: string; outputUrl: string }) {
+export async function markRenderJobSucceeded(input: {
+  jobId: string;
+  outputUrl: string;
+  outputStorageKey?: string | null;
+}) {
   return db.renderJob.update({
     where: { id: input.jobId },
     data: {
       status: 'succeeded',
       progress: 100,
       outputUrl: input.outputUrl,
+      outputStorageKey: input.outputStorageKey ?? null,
       finishedAt: new Date(),
       updatedAt: new Date(),
       errorMessage: null,
