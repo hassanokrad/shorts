@@ -1,0 +1,23 @@
+{
+  "name": "@shorts/renderer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio src/entry.ts",
+    "build": "remotion bundle src/entry.ts",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "remotion": "4.0.221"
+  },
+  "devDependencies": {
+    "@shorts/eslint-config": "workspace:*",
+    "@shorts/tsconfig": "workspace:*",
+    "@types/node": "20.14.12",
+    "@types/react": "18.3.3",
+    "eslint": "9.7.0",
+    "typescript": "5.5.4"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@shorts/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    "./base": "./base.cjs",
+    "./node": "./node.cjs",
+    "./react": "./react.cjs",
+    "./next": "./next.cjs"
+  }
+}
