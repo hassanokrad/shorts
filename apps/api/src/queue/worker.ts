@@ -2,8 +2,8 @@ import {
   claimQueuedRenderJobs,
   markRenderJobFailed,
   markRenderJobSucceeded,
-  refundRenderCredits,
 } from '../db/render-jobs';
+import { creditsService } from '../modules/credits/service';
 import { classifyRenderFailure, runRenderer } from './renderer';
 
 const DEFAULT_BATCH_SIZE = 5;
@@ -46,7 +46,7 @@ export async function processRenderQueueBatch() {
         });
 
         if (failure.refundEligible) {
-          await refundRenderCredits({
+          await creditsService.refundRenderForPlatformFailure({
             jobId: job.id,
             userId: job.userId,
             amount: job.requestedCredits,
