@@ -36,6 +36,7 @@ export async function processRenderQueueBatch() {
         await markRenderJobSucceeded({
           jobId: job.id,
           outputUrl: result.outputUrl,
+          outputStorageKey: result.outputStorageKey,
         });
       } catch (error) {
         const failure = classifyRenderFailure(error);
@@ -63,13 +64,38 @@ export async function processRenderQueueBatch() {
 }
 
 export function startRenderWorkerLoop() {
-  const interval = setInterval(async () => {
+  let stopped = false;
+  let timer: NodeJS.Timeout | undefined;
+
+  const tick = async () => {
+    if (stopped) {
+      return;
+    }
+
     try {
-      await processRenderQueueBatch();
+      do {
+        const { processed } = await processRenderQueueBatch();
+        if (processed < renderWorkerConfig.concurrency) {
+          break;
+        }
+      } while (!stopped);
     } catch (error) {
       console.error('Render worker loop failed', error);
+    } finally {
+      if (!stopped) {
+        timer = setTimeout(() => {
+          void tick();
+        }, renderWorkerConfig.pollIntervalMs);
+      }
     }
-  }, renderWorkerConfig.pollIntervalMs);
+  };
 
-  return () => clearInterval(interval);
+  void tick();
+
+  return () => {
+    stopped = true;
+    if (timer) {
+      clearTimeout(timer);
+    }
+  };
 }
