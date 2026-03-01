@@ -10,6 +10,7 @@ const app = express();
 const port = Number(process.env.API_PORT || 4000);
 const workerEnabled = process.env.RENDER_WORKER_ENABLED === 'true';
 
+app.use('/v1/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
