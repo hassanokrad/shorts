@@ -5,11 +5,11 @@ type DbExecutor = PrismaClient | Prisma.TransactionClient;
 
 export async function withDbTransaction<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
-  client: DbExecutor = db,
+  executor: DbExecutor = db,
 ): Promise<T> {
-  if ('$transaction' in client) {
-    return client.$transaction((tx) => fn(tx));
+  if (executor instanceof PrismaClient) {
+    return executor.$transaction((tx) => fn(tx));
   }
 
-  return fn(client);
+  return fn(executor);
 }
