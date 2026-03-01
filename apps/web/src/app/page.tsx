@@ -55,9 +55,6 @@ export default function HomePage() {
       </section>
 
       <section className="status" aria-label="Web health status">
-        <p>
-          <Link href="/dashboard">Open dashboard prototype →</Link>
-        </p>
         <h2>Current frontend status</h2>
         <pre>{JSON.stringify(webHealthPayload, null, 2)}</pre>
       </section>

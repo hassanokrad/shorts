@@ -110,12 +110,3 @@ p {
   color: #cbd5e1;
   font-size: 12px;
 }
-
-a {
-  color: #67e8f9;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
