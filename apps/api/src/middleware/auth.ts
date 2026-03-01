@@ -1,11 +1,13 @@
 import type { NextFunction, RequestHandler, Response } from 'express';
 
+import { sendError } from './error-handler';
+
 import type { AuthedRequest } from '../types/express';
 
 export const requireAuth: RequestHandler = (req: AuthedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.header('authorization');
   if (!authHeader) {
-    res.status(401).json({ message: 'Unauthorized' });
+    sendError(res, 401, { code: 'unauthorized', message: 'Missing authorization header' });
     return;
   }
 
@@ -23,7 +25,7 @@ export const optionalAuth: RequestHandler = (req: AuthedRequest, _res: Response,
 export const requireInternalSecret: RequestHandler = (req: AuthedRequest, res: Response, next: NextFunction) => {
   const secret = req.header('x-internal-secret');
   if (!secret) {
-    res.status(401).json({ message: 'Missing internal secret' });
+    sendError(res, 401, { code: 'missing_internal_secret', message: 'Missing internal secret' });
     return;
   }
 

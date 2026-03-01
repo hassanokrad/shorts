@@ -1,5 +1,8 @@
 import { Router } from 'express';
 
+import { HealthResponseSchema } from '@shorts/shared-types';
+
+import { SERVICE_NAME } from '../config/constants';
 import { authRouter } from '../modules/auth/router';
 import { billingRouter } from '../modules/billing/router';
 import { creditsRouter } from '../modules/credits/router';
@@ -11,6 +14,15 @@ import { usersRouter } from '../modules/users/router';
 import { webhooksRouter } from '../modules/webhooks/router';
 
 export const v1Router = Router();
+
+v1Router.get('/health', (_req, res) => {
+  const payload = HealthResponseSchema.parse({
+    status: 'ok',
+    service: SERVICE_NAME
+  });
+
+  res.json(payload);
+});
 
 v1Router.use('/auth', authRouter);
 v1Router.use('/users', usersRouter);
