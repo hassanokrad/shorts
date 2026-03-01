@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubscriptionStatus {
+  inactive
+  trialing
+  active
+  past_due
+  canceled
+  unpaid
+
+  @@map("subscription_status")
+}
+
+enum RenderJobStatus {
+  queued
+  processing
+  succeeded
+  failed
+  canceled
+
+  @@map("render_job_status")
+}
+
+enum CreditTxnType {
+  grant_monthly
+  grant_bonus
+  deduct_render
+  refund_render
+  admin_adjust
+
+  @@map("credit_txn_type")
+}
+
+model User {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String          @unique
+  passwordHash    String          @map("password_hash")
+  emailVerifiedAt DateTime?       @map("email_verified_at") @db.Timestamptz(6)
+  role            String          @default("user")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  refreshTokens   RefreshToken[]
+  subscriptions   Subscription?
+  creditAccount   CreditAccount?
+  creditTxns      CreditTransaction[]
+  projects        Project[]
+  renderJobs      RenderJob[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@map("refresh_tokens")
+}
+
+model Plan {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code           String         @unique
+  name           String
+  monthlyCredits Int            @map("monthly_credits")
+  stripePriceId  String?        @unique @map("stripe_price_id")
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  subscriptions  Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String             @unique @map("user_id") @db.Uuid
+  planId               String?            @map("plan_id") @db.Uuid
+  stripeCustomerId     String?            @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
+  status               SubscriptionStatus @default(inactive)
+  currentPeriodStart   DateTime?          @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd     DateTime?          @map("current_period_end") @db.Timestamptz(6)
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 Plan?              @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model StripeEvent {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stripeEventId String    @unique @map("stripe_event_id")
+  eventType     String    @map("event_type")
+  payload       Json
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("stripe_events")
+}
+
+model CreditAccount {
+  userId    String   @id @map("user_id") @db.Uuid
+  balance   Int      @default(0)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_accounts")
+}
+
+model CreditTransaction {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  type         CreditTxnType
+  amount       Int
+  balanceAfter Int           @map("balance_after")
+  metadata     Json          @default("{}")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_credit_transactions_user_created")
+  @@map("credit_transactions")
+}
+
+model Project {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String     @map("user_id") @db.Uuid
+  title             String
+  topic             String?
+  targetDurationSec Int?       @map("target_duration_sec")
+  status            String     @default("draft")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scripts           Script[]
+  scenes            Scene[]
+  renderJobs        RenderJob[]
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_projects_user_id_created")
+  @@map("projects")
+}
+
+model Script {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  sourcePrompt String?  @map("source_prompt")
+  fullText     String   @map("full_text")
+  modelName    String?  @map("model_name")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("scripts")
+}
+
+model Scene {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  sceneIndex  Int      @map("scene_index")
+  textContent String   @map("text_content")
+  durationSec Decimal  @map("duration_sec") @db.Decimal(6, 2)
+  visualPrompt String? @map("visual_prompt")
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, sceneIndex])
+  @@map("scenes")
+}
+
+model RenderTemplate {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String      @unique
+  name       String
+  isActive   Boolean     @default(true) @map("is_active")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  renderJobs RenderJob[]
+
+  @@map("render_templates")
+}
+
+model RenderJob {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String          @map("user_id") @db.Uuid
+  projectId        String          @map("project_id") @db.Uuid
+  templateId       String          @map("template_id") @db.Uuid
+  status           RenderJobStatus @default(queued)
+  progress         Int             @default(0)
+  errorMessage     String?         @map("error_message")
+  isWatermarked    Boolean         @default(true) @map("is_watermarked")
+  outputUrl        String?         @map("output_url")
+  outputStorageKey String?         @map("output_storage_key")
+  requestedCredits Int             @map("requested_credits")
+  startedAt        DateTime?       @map("started_at") @db.Timestamptz(6)
+  finishedAt       DateTime?       @map("finished_at") @db.Timestamptz(6)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template         RenderTemplate  @relation(fields: [templateId], references: [id])
+
+  @@index([status, createdAt], map: "idx_render_jobs_status_created")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_render_jobs_user_created")
+  @@map("render_jobs")
+}
+
+model IdempotencyKey {
+  key          String   @id
+  userId       String   @map("user_id") @db.Uuid
+  requestHash  String   @map("request_hash")
+  responseCode Int?     @map("response_code")
+  responseBody Json?    @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(6)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("idempotency_keys")
+}
