@@ -3,10 +3,12 @@ import express from 'express';
 import { HealthResponseSchema } from '@shorts/shared-types';
 
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
+import { startRenderWorkerLoop } from './queue/worker';
 import { v1Router } from './routes/v1';
 
 const app = express();
 const port = Number(process.env.API_PORT || 4000);
+const workerEnabled = process.env.RENDER_WORKER_ENABLED === 'true';
 
 app.use(express.json());
 
@@ -25,4 +27,9 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`API listening on port ${port}`);
+
+  if (workerEnabled) {
+    startRenderWorkerLoop();
+    console.log('Render worker loop started');
+  }
 });
