@@ -12,7 +12,10 @@ export {
   AuthTokensSchema as AuthRegisterResponseSchema,
   AuthLoginSchema as AuthLoginRequestSchema,
   AuthTokensSchema as AuthLoginResponseSchema,
-  AuthRefreshSchema as AuthRefreshRequestSchema,
+  AuthRefreshSchema as AuthRefreshRequestSchema
+} from './domains/auth';
+
+export type {
   AuthRegisterDto as AuthRegisterRequestDto,
   AuthTokensDto as AuthRegisterResponseDto,
   AuthLoginDto as AuthLoginRequestDto,
@@ -23,27 +26,29 @@ export {
 export {
   ProjectListItemSchema as ProjectSchema,
   ProjectCreateSchema as CreateProjectRequestSchema,
-  ProjectUpdateSchema as UpdateProjectRequestSchema,
+  ProjectUpdateSchema as UpdateProjectRequestSchema
+} from './domains/projects';
+
+export type {
   ProjectCreateDto as CreateProjectRequestDto,
   ProjectUpdateDto as UpdateProjectRequestDto
 } from './domains/projects';
 
 export {
   SceneSplitRequestSchema as SplitScenesRequestSchema,
-  SceneSplitResultSchema as SplitScenesResponseSchema,
-  SceneSplitRequestDto as SplitScenesRequestDto,
-  SceneSplitResultDto as SplitScenesResponseDto
+  SceneSplitResultSchema as SplitScenesResponseSchema
 } from './domains/scenes';
+
+export type { SceneSplitRequestDto as SplitScenesRequestDto, SceneSplitResultDto as SplitScenesResponseDto } from './domains/scenes';
 
 export {
   RenderEnqueueSchema as CreateRenderRequestSchema,
   RenderEnqueueResponseSchema as CreateRenderResponseSchema,
-  RenderJobStatusSchema as RenderJobSchema,
-  RenderEnqueueDto as CreateRenderRequestDto,
-  RenderEnqueueResponseDto as CreateRenderResponseDto
+  RenderJobStatusSchema as RenderJobSchema
 } from './domains/renders';
 
-export {
-  BillingSubscriptionSummarySchema as BillingSubscriptionResponseSchema,
-  BillingSubscriptionSummaryDto as BillingSubscriptionResponseDto
-} from './domains/billing';
+export type { RenderEnqueueDto as CreateRenderRequestDto, RenderEnqueueResponseDto as CreateRenderResponseDto } from './domains/renders';
+
+export { BillingSubscriptionSummarySchema as BillingSubscriptionResponseSchema } from './domains/billing';
+
+export type { BillingSubscriptionSummaryDto as BillingSubscriptionResponseDto } from './domains/billing';
